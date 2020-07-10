@@ -6,8 +6,8 @@
 extern crate string_parser;
 use string_parser::string_parser; 
  
-fn end_filter(c : char) -> bool{            
-    if c == '\'' {
+fn end_filter(c : Vec<char>) -> bool{            
+    if c.last().unwrap() == &'\'' {
         return true;
         }
     else {

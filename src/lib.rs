@@ -15,14 +15,18 @@ mod tests {
         assert_eq!(string_parser("./text", "'", end_filter, callback).unwrap(), ());
 
         fn callback(s : String){
+            println!("{}", s);
             if s != String::from("foo"){
                 panic!();
             }
         }
 
-        fn end_filter(c : char) -> bool{
-            
-            if c == '\'' {
+        fn end_filter(c : Vec<char>) -> bool{
+            for char in &c {
+                print!("{}", char);
+            }
+            print!("\n");
+            if c.last().unwrap() == &'\'' {
                 println!("end filter");
                 return true;
             }
@@ -52,8 +56,8 @@ mod tests {
 /// extern crate string_parser;
 /// use string_parser::string_parser; 
 /// 
-/// fn end_filter(c : char) -> bool{            
-///     if c == '\'' {
+/// fn end_filter(c : Vec<char>) -> bool{            
+///     if c.last().unwrap()== &'\'' {
 ///         return true;
 ///         }
 ///     else {
@@ -65,7 +69,7 @@ mod tests {
 ///     assert_eq!(String::from("foo"), s);
 /// }
 /// string_parser("./text", "'", end_filter, callback).unwrap();
-pub fn string_parser(path : &str,text : &str, end_filter : fn(char) -> bool ,callback : fn(String)) -> Result<(), io::Error> {
+pub fn string_parser(path : &str,text : &str, end_filter : fn(Vec<char>) -> bool ,callback : fn(String)) -> Result<(), io::Error> {
     //open the file and put it as a string into file_buf
     let mut inside : bool = false; // true if the cursor is inside the statement
     let mut first : bool = true; // true is it's the first iteration
@@ -79,16 +83,7 @@ pub fn string_parser(path : &str,text : &str, end_filter : fn(char) -> bool ,cal
     let mut buff : Vec<char> = vec![' '; text.len()];
     //loop through every character of the file
     for c in file_buf.chars() {
-        
-        if inside && !end_filter(c){
-            string_buffer.push(c);
-        }
-        else if inside && !first {
-            inside = false;
-            callback(string_buffer.clone());
-        }
         let mut i : usize = 0;
-
         while i < buff.len() -1 {
             buff[i] = buff[i+1];
             i += 1;
@@ -96,16 +91,32 @@ pub fn string_parser(path : &str,text : &str, end_filter : fn(char) -> bool ,cal
         buff[i] = c;
         i = 0;
 
-        while i < buff.len(){
-            if buff[i] != text.chars().nth(i).unwrap() {
-                break;
+        if inside && !end_filter(buff.clone()){
+            string_buffer.push(c);
+        }
+        else if inside && !first {
+            inside = false;
+            // let s = string_buffer.pop();
+            callback(string_buffer.clone());
+        }
+        else {
+            while i < buff.len(){
+                // println!("buff[{}] : {}, text[{}] : {}", i, buff[i], i, text.chars().nth(i).unwrap());
+                if buff[i] != text.chars().nth(i).unwrap() {
+                    break;
+                }
+                i += 1;
             }
-            i += 1;
+            if i == text.len() {
+                inside = true;
+                first = false;
+            }
         }
-        if i == text.len() {
-            inside = true;
-            first = false;
-        }
+        
+
+        
+
+        
 
         
 
