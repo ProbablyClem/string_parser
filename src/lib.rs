@@ -1,7 +1,6 @@
 //! # string_parser
 //! 
-//! string_parser is a crate that find tokens in source files and parse the inside<br/>
-//! source code at : 
+//! string_parser is a crate that find tokens in source files and parse the inside<br/> 
 
 use std::fs::File;
 use std::io;
