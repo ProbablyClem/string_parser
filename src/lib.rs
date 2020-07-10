@@ -12,14 +12,17 @@ mod tests {
     use super::*;
     #[test]
     fn doc_test() {
-        assert_eq!(string_parser("./text", "'", end_filter, callback).unwrap(), ());
+        let mut s1 = String::new();
 
-        fn callback(s : String){
-            println!("{}", s);
+        let callback = |s : String| { 
             if s != String::from("foo"){
                 panic!();
             }
-        }
+            s1 = s;
+        };
+
+
+        assert_eq!(string_parser("./text", "'", end_filter, callback).unwrap(), ());
 
         fn end_filter(c : Vec<char>) -> bool{
             for char in &c {
@@ -64,12 +67,13 @@ mod tests {
 ///         return false;
 ///         }   
 /// }
+/// //can also use closures
+/// let callback = |s : String| {
+///     assert_eq!(String::from("foo"), s); 
+/// };
 /// 
-/// fn callback(s : String){
-///     assert_eq!(String::from("foo"), s);
-/// }
 /// string_parser("./text", "'", end_filter, callback).unwrap();
-pub fn string_parser(path : &str,text : &str, end_filter : fn(Vec<char>) -> bool ,callback : fn(String)) -> Result<(), io::Error> {
+pub fn string_parser(path : &str,text : &str, end_filter : impl Fn(Vec<char>) -> bool ,mut callback : impl FnMut(String)) -> Result<(), io::Error> {
     //open the file and put it as a string into file_buf
     let mut inside : bool = false; // true if the cursor is inside the statement
     let mut first : bool = true; // true is it's the first iteration
