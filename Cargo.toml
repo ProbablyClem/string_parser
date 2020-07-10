@@ -1,6 +1,7 @@
 [package]
 name = "string-parser"
 version = "0.1.0"
+description = "String parsing crate"
 authors = ["Clément Guiton <clement.guiton.dev@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
