@@ -1,6 +1,6 @@
 # string_parser
 ## Rust string parsing crate
-### Doc : https://docs.rs/string-parser/0.1.0/string_parser/
+### Doc : https://crates.io/crates/string-parser
 ### Usage :
 ```Rust
 extern crate string_parser;
