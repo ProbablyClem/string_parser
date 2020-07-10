@@ -102,6 +102,7 @@ pub fn string_parser(path : &str,text : &str, end_filter : impl Fn(Vec<char>) ->
             inside = false;
             // let s = string_buffer.pop();
             callback(string_buffer.clone());
+            string_buffer.clear();
         }
         else {
             while i < buff.len(){
