@@ -176,3 +176,62 @@ pub fn string_parser_with_line(path : &str,text : &str, end_filter : impl Fn(Vec
     }
     Ok(())
 }
+
+///Like [string_parser_with_line](./fn.string_parser_with_line.html) but the callback function also take the file path as arguments
+pub fn string_parser_with_file(path : &str,text : &str, end_filter : impl Fn(Vec<char>) -> bool ,mut callback : impl FnMut(String, usize, &str)) -> Result<(), io::Error> {
+    //open the file and put it as a string into file_buf
+    let mut inside : bool = false; // true if the cursor is inside the statement
+    let mut first : bool = true; // true is it's the first iteration
+    let mut string_buffer = String::new();
+
+    let mut file_buf = String::new(); //the whole file as a String
+
+    let mut line : usize = 0;
+    let f = File::open(path)?;
+    let mut f = BufReader::new(f);
+    f.read_to_string(&mut file_buf)?;
+
+    let mut buff : Vec<char> = vec![' '; text.len()];
+    //loop through every character of the file
+    for c in file_buf.chars() {
+        if c == '\n' {
+            line += 1;
+        }
+        let mut i : usize = 0;
+        while i < buff.len() -1 {
+            buff[i] = buff[i+1];
+            i += 1;
+        }
+        buff[i] = c;
+        i = 0;
+
+        if inside && !end_filter(buff.clone()){
+            string_buffer.push(c);
+        }
+        else if inside && !first {
+            inside = false;
+            // let s = string_buffer.pop();
+            callback(string_buffer.clone(), line, path);
+            string_buffer.clear();
+        }
+        else {
+            while i < buff.len(){
+                // println!("buff[{}] : {}, text[{}] : {}", i, buff[i], i, text.chars().nth(i).unwrap());
+                if buff[i] != text.chars().nth(i).unwrap() {
+                    break;
+                }
+                i += 1;
+            }
+            if i == text.len() {
+                inside = true;
+                first = false;
+            }
+        }
+        
+    }
+
+    if inside {
+        callback(string_buffer.clone(), line +1, path);
+    }
+    Ok(())
+}
