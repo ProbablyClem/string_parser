@@ -17,6 +17,7 @@ mod tests {
         // let mut s1 = String::new();
 
         let callback = |s : String, l : usize, f : &str| { 
+            println!("{} {} : {}", f, l, s);
             if s != String::from("foo"){
                 panic!();
             }
@@ -49,7 +50,7 @@ fn string_parser(path : &str, p : &Parser) -> Result<(), io::Error> {
     //for everykeyword know if we're inside the token
     let mut insides : HashMap<String, bool> = HashMap::new();
     for i in p.clone().get_keywords(){
-        let mut b = false;
+        let b = false;
         insides.insert(i.clone(), b.clone());
     }
 
@@ -67,7 +68,7 @@ fn string_parser(path : &str, p : &Parser) -> Result<(), io::Error> {
     let mut buffers : HashMap<String, Vec<char>> = HashMap::new();
 
     for i in p.clone().get_keywords(){
-        let mut buff : Vec<char> = vec![' '; i.len()];
+        let buff : Vec<char> = vec![' '; i.len()];
         buffers.insert(i.clone(), buff);
     }
     
@@ -84,7 +85,6 @@ fn string_parser(path : &str, p : &Parser) -> Result<(), io::Error> {
             let end_filter = end_filter_hash.get(&i).unwrap();
             let cb_hm = &p.clone().get_callbacks();
             let callback = cb_hm.get(&i).unwrap();
-            let mut inside = insides.get(&i).unwrap();
 
             let mut y : usize = 0;
             while y < buff.len() -1 {
@@ -94,11 +94,11 @@ fn string_parser(path : &str, p : &Parser) -> Result<(), io::Error> {
             buff[y] = c;
             y = 0;
     
-            if *inside && !end_filter(buff.clone()){
+            if *insides.get(&i).unwrap() && !end_filter(buff.clone()){
                 string_buffer.push(c);
             }
-            else if *inside && !first {
-                inside = &false;
+            else if *insides.get(&i).unwrap() && !first {
+                insides.insert(i, false);
                 // let s = string_buffer.pop();
                 callback(string_buffer.clone(), line, path);
                 string_buffer.clear();
@@ -112,7 +112,7 @@ fn string_parser(path : &str, p : &Parser) -> Result<(), io::Error> {
                     y += 1;
                 }
                 if y == i.len() {
-                    inside = &true;
+                    insides.insert(i, false);
                     first = false;
                 }
             }
