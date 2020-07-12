@@ -3,8 +3,9 @@
 ### Doc : https://crates.io/crates/string-parser
 ### Usage :
 ```Rust
+use std::rc::Rc;
 extern crate string_parser;
-use string_parser::string_parser; 
+use string_parser::Parser; 
  
 fn end_filter(c : Vec<char>) -> bool{            
     if c.last().unwrap()== &'\'' {
@@ -14,11 +15,15 @@ fn end_filter(c : Vec<char>) -> bool{
         return false;
         }   
 }
+
 //can also use closures
-let callback = |s : String| {
+let callback = |s : String, line : usize, file : &str| {
     assert_eq!(String::from("foo"), s); 
 };
 
-string_parser("./text", "'", end_filter, callback).unwrap();
+let mut string_parser = Parser::new();
+
+string_parser.add(String::from("'"), Rc::new(Box::from(end_filter)), Rc::new(Box::from(callback)));
+string_parser.parse("./text");
 ```
 
