@@ -1,134 +1,136 @@
 //! # string_parser
-//! 
-//! string_parser is a crate that find tokens in source files and parse the inside<br/> 
+//!
+//! string_parser is a crate that find tokens in source files and parse the inside<br/>
 
-use std::rc::Rc;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::collections::HashMap;
+use std::rc::Rc;
 
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
+    #[should_panic(expected = "callback")]
     fn doc_test() {
-        // let mut s1 = String::new();
-
-        let callback = |s : String, l : usize, f : &str| { 
-            println!("{} {} : {}", f, l, s);
-            if s != String::from("foo"){
-                panic!();
+        let callback = |s: String, l: usize, f: &str| {
+            if s != String::from("foo") {
+                panic!("callback");
             }
-            // s1 = s;
         };
 
         let mut s_p = Parser::new();
-        s_p.add(String::from("'"), Rc::new(Box::from(end_filter)), Rc::new(Box::from(callback)));
+        s_p.add(
+            String::from("//todo"),
+            Rc::new(Box::from(end_filter)),
+            Rc::new(Box::from(callback)),
+        );
         assert_eq!(s_p.parse("./text").unwrap(), ());
 
-        fn end_filter(c : Vec<char>) -> bool{
+        fn end_filter(c: Vec<char>) -> bool {
             for char in &c {
                 print!("{}", char);
             }
             print!("\n");
-            if c.last().unwrap() == &'\'' {
+            if c.last().unwrap() == &'\n' {
                 println!("end filter");
                 return true;
-            }
-            else {
+            } else {
                 return false;
             }
         }
     }
- 
+
+    #[test]
+    #[should_panic]
+    fn test_closure() {
+        let callback = || {
+            panic!();
+        };
+
+        let mut hash = HashMap::new();
+        hash.insert(&"closure", Rc::new(Box::from(callback)));
+        let c = hash.get(&"closure").unwrap();
+        c();
+    }
 }
 
-fn string_parser(path : &str, p : &Parser) -> Result<(), io::Error> {
-
+fn string_parser(path: &str, p: &Parser) -> Result<(), io::Error> {
     //for everykeyword know if we're inside the token
-    let mut insides : HashMap<String, bool> = HashMap::new();
-    for i in p.clone().get_keywords(){
-        let b = false;
-        insides.insert(i.clone(), b.clone());
+    let mut insides: HashMap<String, bool> = HashMap::new();
+    for i in p.clone().get_keywords() {
+        insides.insert(i.clone(), false);
     }
 
-    let mut first : bool = true; // true is it's the first iteration
+    let mut first: bool = true; // true is it's the first iteration
 
     //open the file and put it as a string into file_buf
     let mut string_buffer = String::new();
     let mut file_buf = String::new(); //the whole file as a String
-    let mut line : usize = 0;
+    let mut line: usize = 0;
     let f = File::open(path)?;
     let mut f = BufReader::new(f);
     f.read_to_string(&mut file_buf)?;
 
-    //create a buffer for every keyword 
-    let mut buffers : HashMap<String, Vec<char>> = HashMap::new();
+    //create a buffer for every keyword
+    let mut buffers: HashMap<String, Vec<char>> = HashMap::new();
 
-    for i in p.clone().get_keywords(){
-        let buff : Vec<char> = vec![' '; i.len()];
+    for i in p.clone().get_keywords() {
+        let buff: Vec<char> = vec![' '; i.len()];
         buffers.insert(i.clone(), buff);
     }
-    
     //loop through every character of the file
     for c in file_buf.chars() {
         //count the line number
         if c == '\n' {
             line += 1;
         }
-
-        for i in p.clone().get_keywords(){
-            let mut buff : Vec<char> = (&buffers.get(&i).unwrap()).to_vec();
+        for i in p.clone().get_keywords() {
+            let mut buff: Vec<char> = (&buffers.get(&i).unwrap()).to_vec();
             let end_filter_hash = p.clone().get_end_filters();
             let end_filter = end_filter_hash.get(&i).unwrap();
             let cb_hm = &p.clone().get_callbacks();
             let callback = cb_hm.get(&i).unwrap();
 
-            let mut y : usize = 0;
-            while y < buff.len() -1 {
-                buff[y] = buff[y+1];
+            let mut y: usize = 0;
+            while y < buff.len() - 1 {
+                buff[y] = buff[y + 1];
                 y += 1;
             }
             buff[y] = c;
-            y = 0;
-    
-            if *insides.get(&i).unwrap() && !end_filter(buff.clone()){
+            if *insides.get(&i).unwrap() && !end_filter(buff.clone()) {
                 string_buffer.push(c);
-            }
-            else if *insides.get(&i).unwrap() && !first {
+            } else if *insides.get(&i).unwrap() && !first && end_filter(buff.clone()) {
                 insides.insert(i, false);
                 // let s = string_buffer.pop();
                 callback(string_buffer.clone(), line, path);
                 string_buffer.clear();
-            }
-            else {
-                while y < buff.len(){
-                    // println!("buff[{}] : {}, text[{}] : {}", i, buff[i], i, text.chars().nth(i).unwrap());
+            } else {
+                y = buff.len();
+                while y > buff.len() {
+                    // println!("{}: {} = {}", y, buff[y], i.chars().nth(y).unwrap());
                     if buff[y] != i.chars().nth(y).unwrap() {
                         break;
                     }
-                    y += 1;
+                    y -= 1;
                 }
                 if y == i.len() {
-                    insides.insert(i, false);
+                    insides.insert(i, true);
                     first = false;
                 }
             }
-            
         }
-        
-        for i in &p.clone().get_keywords(){
+
+        for i in &p.clone().get_keywords() {
             if *insides.get(i).unwrap() {
                 let cb_hm = &p.clone().get_callbacks();
                 let cb = cb_hm.get(i).unwrap();
-                cb(string_buffer.clone(), line +1, path);
+                cb(string_buffer.clone(), line + 1, path);
             }
         }
-        
-        }
-        
+    }
     Ok(())
 }
 
@@ -138,8 +140,8 @@ fn string_parser(path : &str, p : &Parser) -> Result<(), io::Error> {
 /// ```no_run
 /// use std::rc::Rc;
 /// extern crate string_parser;
-/// use string_parser::Parser; 
-/// 
+/// use string_parser::Parser;
+///
 /// fn end_filter(c : Vec<char>) -> bool{            
 ///     if c.last().unwrap()== &'\'' {
 ///         return true;
@@ -150,30 +152,28 @@ fn string_parser(path : &str, p : &Parser) -> Result<(), io::Error> {
 /// }
 /// //can also use closures
 /// let callback = |s : String, line : usize, file : &str| {
-///     assert_eq!(String::from("foo"), s); 
+///     assert_eq!(String::from("foo"), s);
 /// };
 /// let mut string_parser = Parser::new();
 /// string_parser.add(String::from("'"), Rc::new(Box::from(end_filter)), Rc::new(Box::from(callback)));
 /// string_parser.parse("./text");
- 
 #[derive(Clone)]
-pub struct Parser{
+pub struct Parser {
     ///The list of keyword to parse
-    pub keywords : Vec<String>,
+    pub keywords: Vec<String>,
     ///Filter funtions for each keyword (indexed by keyword)
-    pub end_filters : HashMap<String, Rc<Box<dyn Fn(Vec<char>) -> bool>>>,
+    pub end_filters: HashMap<String, Rc<Box<dyn Fn(Vec<char>) -> bool>>>,
     ///Callback funtions for each keyword (indexed by keyword)
-    pub callbacks : HashMap<String, Rc<Box<dyn Fn(String, usize, &str)>>>,
+    pub callbacks: HashMap<String, Rc<Box<dyn Fn(String, usize, &str)>>>,
 }
-
 
 impl Parser {
     ///Instanciante a new empty Parser
     pub fn new() -> Parser {
         Parser {
-            keywords : Vec::new(),
-            end_filters : HashMap::new(),
-            callbacks : HashMap::new(),
+            keywords: Vec::new(),
+            end_filters: HashMap::new(),
+            callbacks: HashMap::new(),
         }
     }
 
@@ -182,7 +182,7 @@ impl Parser {
     /// * `text` - the text to search
     /// * `end_filter` - the function called at each character to check if we're still within the token. Sould return true when out of the token.
     ///     </br>It receives the vector of characters inside the token
-    ///      * Should return true when at the end of the token 
+    ///      * Should return true when at the end of the token
     /// # Example
     /// ```no_run
     /// fn end_filter(c : Vec<char>) -> bool{
@@ -206,9 +206,13 @@ impl Parser {
     ///     println!("{} {} : {}", file, line, s);
     /// };
     /// ```
-    
-    pub fn add(&mut self, keyword : String, end_filter : Rc<Box<dyn Fn(Vec<char>) -> bool>>, callback : Rc<Box<dyn Fn(String, usize, &str)>>) -> &Parser{
-        
+
+    pub fn add(
+        &mut self,
+        keyword: String,
+        end_filter: Rc<Box<dyn Fn(Vec<char>) -> bool>>,
+        callback: Rc<Box<dyn Fn(String, usize, &str)>>,
+    ) -> &Parser {
         self.keywords.push(keyword.clone());
         self.end_filters.insert(keyword.clone(), end_filter);
         self.callbacks.insert(keyword.clone(), callback);
@@ -228,7 +232,7 @@ impl Parser {
     }
 
     ///Open the file and parse every token of the Parser
-    pub fn parse(&self, path : &str) -> Result<(), io::Error> {
+    pub fn parse(&self, path: &str) -> Result<(), io::Error> {
         string_parser(path, &self).expect("failed to open file");
         Ok(())
     }
